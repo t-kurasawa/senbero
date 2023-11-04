@@ -30,8 +30,8 @@ class MyStatefulWidget extends StatefulWidget {
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
 
   static const _pages = [
-    QRPayPage(),
     ChatPage(),
+    QRPayPage(),
     MapPage(),
   ];
 
@@ -51,8 +51,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'QR Pay'),
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'QR Pay'),
           BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Map'),
         ],
         type: BottomNavigationBarType.fixed,

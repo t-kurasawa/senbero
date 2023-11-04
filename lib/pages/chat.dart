@@ -1,11 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 String randomString() {
@@ -47,16 +51,56 @@ class _ChatPageState extends State<ChatPage> {
     );
     _addMessage(textMessage);
 
-    // ChatGPTに質問するAPIをリクエストする
-    final content = await askChatGPT(message.text);
+    // デモ用にコマンドで処理を決める
+    switch (message.text) {
+      case 'flight':
+        // 本当は画像をチャットで送信したらChatGPTに食わせたいが機能がまだ開放されてない。
+        await sleep(Duration(seconds: 1));
+        final ticketMessage = types.TextMessage(
+          author: _chatgptuser,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          id: randomString(),
+          text: '''
+Airline: The airline is Air Company, but this appears to be a placeholder name that is often used in sample images.
+Passenger Name: DOE / JOHN
+Flight Number: AY0007
+Date of Flight: 12 NOV 2015
+Departure City (From): MOSCOW / DME (which stands for Domodedovo Moscow Airport)
+Arrival City (To): LARNACA / LCA (which stands for Larnaca International Airport)
+Seat Number: 24A
+Boarding Time: 11:30
+Gate Number: 47
+Class: ECONOMY
+Ticket Number (ETKT): 5552125239450
+Other Notes: GATE CLOSES 40 MINUTES BEFORE DEPARTURE and HAVE A NICE TRIP!
+''',
+        );
+        _addMessage(ticketMessage);
+        break;
+      case 'senbero':
+        // Google Map で店検索する
+        final content = await fetchMapChoices(message.text);
+        final mapmessages = types.TextMessage(
+          author: _chatgptuser,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          id: randomString(),
+          text: content,
+        );
+        _addMessage(mapmessages);
 
-    final chatgptmessage = types.TextMessage(
-      author: _chatgptuser,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-      id: randomString(),
-      text: content,
-    );
-    _addMessage(chatgptmessage);
+        break;
+      default:
+        // ChatGPTに質問するAPIをリクエストする
+        final content = await fetchChat(message.text);
+
+        final chatgptmessage = types.TextMessage(
+          author: _chatgptuser,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          id: randomString(),
+          text: content,
+        );
+        _addMessage(chatgptmessage);
+    }
   }
 
 
@@ -66,8 +110,8 @@ class _ChatPageState extends State<ChatPage> {
         "author": {
           "id": "chatgpt4"
         },
-        "createdAt": 1677649421031,
-        "id": "message_id_1",
+        "createdAt": 1677649421032,
+        "id": "message_id_2",
         "text": "ChatGPT に質問してください"
       },
     ];
@@ -140,18 +184,33 @@ class _ChatPageState extends State<ChatPage> {
   }
 
 
+  void _handlePreviewDataFetched(
+    types.TextMessage message,
+    types.PreviewData previewData,
+  ) {
+    final index = _messages.indexWhere((element) => element.id == message.id);
+    final updatedMessage = (_messages[index] as types.TextMessage).copyWith(
+      previewData: previewData,
+    );
+
+    setState(() {
+      _messages[index] = updatedMessage;
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     body: Chat(
       user: _user,
       messages: _messages,
       onAttachmentPressed: _handleAttachmentPressed,
+      onPreviewDataFetched: _handlePreviewDataFetched,
       onSendPressed: _handleSendPressed,
     ),
   );
 }
 
-Future askChatGPT(question) async {
+Future fetchChat(question) async {
   final response = await http.post(
     Uri.parse('https://26dnl0rgtj.execute-api.ap-northeast-1.amazonaws.com/prod/chat'),
     headers: <String, String>{
@@ -185,4 +244,54 @@ Future askChatGPT(question) async {
     // then throw an exception.
     throw Exception('Failed to API');
   }
+}
+
+
+Future fetchMapChoices(bordingTime) async {
+  final response = await http.post(
+    Uri.parse('https://26dnl0rgtj.execute-api.ap-northeast-1.amazonaws.com/prod/map/choices'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        "bordingTime": "11:30"
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      // If the server did return a 200 OK response,
+      // then parse the JSON.
+
+    // JSON文字列をMapに変換
+    Map<String, dynamic> jsonData = json.decode(response.body);
+
+    // データへのアクセス例
+    String status = jsonData['status'];
+    List<dynamic> messages = jsonData['message'];
+
+    print('Status: $status');
+    String content = '';
+
+    for (var message in messages) {
+      String formattedAddress = message['formattedAddress'];
+      String displayName = message['displayName']['text'];
+      content = displayName + ' : ' + formattedAddress;
+
+      print('Formatted Address: $formattedAddress');
+      print('Display Name: $displayName');
+      print('---');
+    }
+    return content;
+  } else {
+    // If the server did not return a 200 OK response,
+    // then throw an exception.
+    throw Exception('Failed to API');
+  }
+}
+
+
+
+// デモ用
+Future<void> sleep(Duration duration) {
+  return Future.delayed(duration, () => {});
 }

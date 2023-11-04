@@ -10,7 +10,7 @@ class QRPayPage extends StatelessWidget {
         title: const Text('QR Pay'),
       ),
       body: const Center(
-          child: Text('QR Pay画面', style: TextStyle(fontSize: 32.0))),
+          child: Text('QR Pay', style: TextStyle(fontSize: 32.0))),
     );
   }
 }

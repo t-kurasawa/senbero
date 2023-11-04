@@ -7,10 +7,10 @@ class MapPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('マップ'),
+        title: const Text('Map'),
       ),
       body: const Center(
-          child: Text('マップ画面', style: TextStyle(fontSize: 32.0))),
+          child: Text('Map', style: TextStyle(fontSize: 32.0))),
     );
   }
 }
