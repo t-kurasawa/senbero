@@ -55,7 +55,7 @@ class _ChatPageState extends State<ChatPage> {
     switch (message.text) {
       case 'flight':
         // 本当は画像をチャットで送信したらChatGPTに食わせたいが機能がまだ開放されてない。
-        await sleep(Duration(seconds: 1));
+        await sleep(Duration(seconds: 3));
         final ticketMessage = types.TextMessage(
           author: _chatgptuser,
           createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -79,20 +79,20 @@ Other Notes: GATE CLOSES 40 MINUTES BEFORE DEPARTURE and HAVE A NICE TRIP!
         break;
       case 'senbero':
         // Google Map で店検索する
-        final content = await fetchMapChoices(message.text);
-        final mapmessages = types.TextMessage(
-          author: _chatgptuser,
-          createdAt: DateTime.now().millisecondsSinceEpoch,
-          id: randomString(),
-          text: content,
-        );
-        _addMessage(mapmessages);
-
+        final contents = await fetchMapChoices(message.text);
+        for(var content in contents){
+          final mapmessages = types.TextMessage(
+            author: _chatgptuser,
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+            id: randomString(),
+            text: content,
+          );
+          _addMessage(mapmessages);
+        }
         break;
       default:
         // ChatGPTに質問するAPIをリクエストする
         final content = await fetchChat(message.text);
-
         final chatgptmessage = types.TextMessage(
           author: _chatgptuser,
           createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -112,7 +112,7 @@ Other Notes: GATE CLOSES 40 MINUTES BEFORE DEPARTURE and HAVE A NICE TRIP!
         },
         "createdAt": 1677649421032,
         "id": "message_id_2",
-        "text": "ChatGPT に質問してください"
+        "text": "Ask ChatGPT a question"
       },
     ];
     final messages = (response as List)
@@ -183,6 +183,22 @@ Other Notes: GATE CLOSES 40 MINUTES BEFORE DEPARTURE and HAVE A NICE TRIP!
     }
   }
 
+  void _handleMessageTap(BuildContext _, types.Message message) async {
+    print('++++++++++++++++_handleMessageTap++++++++++++++++');
+    if (message is types.TextMessage) {
+      // 店名からChatGPTに経路を質問する
+      final content = await fetchMapDirections(message.text);
+      final chatgptmessage = types.TextMessage(
+        author: _chatgptuser,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+        id: randomString(),
+        text: content,
+      );
+      print(chatgptmessage);
+      _addMessage(chatgptmessage);
+    }
+    print('++++++++++++++++_handleMessageTap++++++++++++++++');
+  }
 
   void _handlePreviewDataFetched(
     types.TextMessage message,
@@ -203,6 +219,7 @@ Other Notes: GATE CLOSES 40 MINUTES BEFORE DEPARTURE and HAVE A NICE TRIP!
     body: Chat(
       user: _user,
       messages: _messages,
+      onMessageTap: _handleMessageTap,
       onAttachmentPressed: _handleAttachmentPressed,
       onPreviewDataFetched: _handlePreviewDataFetched,
       onSendPressed: _handleSendPressed,
@@ -270,18 +287,13 @@ Future fetchMapChoices(bordingTime) async {
     List<dynamic> messages = jsonData['message'];
 
     print('Status: $status');
-    String content = '';
+    List<String> contents = [];
 
     for (var message in messages) {
-      String formattedAddress = message['formattedAddress'];
       String displayName = message['displayName']['text'];
-      content = displayName + ' : ' + formattedAddress;
-
-      print('Formatted Address: $formattedAddress');
-      print('Display Name: $displayName');
-      print('---');
+      contents.add(utf8.decode(displayName.runes.toList()));
     }
-    return content;
+    return contents;
   } else {
     // If the server did not return a 200 OK response,
     // then throw an exception.
@@ -289,7 +301,37 @@ Future fetchMapChoices(bordingTime) async {
   }
 }
 
+Future fetchMapDirections(address) async {
+  final response = await http.get(
+    Uri.parse('https://26dnl0rgtj.execute-api.ap-northeast-1.amazonaws.com/prod/map/directions?address=$address'),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+  );
 
+  if (response.statusCode == 200) {
+    // If the server did return a 200 OK response,
+    // then parse the JSON.
+    String jsonString = response.body; // ここに提供されたJSONデータを入力してください
+
+    // JSONデータをデコード
+    Map<String, dynamic> decodedData = jsonDecode(jsonString);
+
+    // 必要なデータを取得
+    Map<String, dynamic> messageData = decodedData['message'];
+    Map<String, dynamic> innerMessageData = messageData['message'];
+    String content = innerMessageData['content'];
+    final decodedContent = utf8.decode(content.runes.toList());
+    // データを表示
+    print('decoded content: $decodedContent');
+
+    return decodedContent;
+  } else {
+    // If the server did not return a 200 OK response,
+    // then throw an exception.
+    throw Exception('Failed to API');
+  }
+}
 
 // デモ用
 Future<void> sleep(Duration duration) {

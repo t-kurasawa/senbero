@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'pages/chat.dart';
-import 'pages/map.dart';
 import 'pages/qrpay.dart';
 
 class MyApp extends StatelessWidget {
@@ -30,9 +29,8 @@ class MyStatefulWidget extends StatefulWidget {
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
 
   static const _pages = [
-    ChatPage(),
     QRPayPage(),
-    MapPage(),
+    ChatPage(),
   ];
 
   int _selectedIndex = 0;
@@ -51,9 +49,8 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'QR Pay'),
-          BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Map'),
         ],
         type: BottomNavigationBarType.fixed,
       )
